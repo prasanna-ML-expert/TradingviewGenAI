@@ -1,0 +1,28 @@
+{
+  "manifest_version": 3,
+  "name": "TradingView Gemini Integration",
+  "version": "1.0",
+  "description": "A Firefox extension that integrates Gemini with TradingView charts",
+  "permissions": ["activeTab"],
+  "host_permissions": [
+    "https://generativelanguage.googleapis.com/",
+    "https://aiplatform.googleapis.com/" 
+  ],
+  "content_scripts": [
+    {
+      "matches": ["*://*.tradingview.com/*"],
+      "js": ["contentScript.js"]
+    }
+  ],
+  "background": {
+    "scripts": ["backgroundScript.js"]
+
+  },
+  "sidebar_action": {
+	  "default_title": "Gen AI",
+	  "default_panel": "popup.html" 
+	},
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'self'"
+  }
+}
