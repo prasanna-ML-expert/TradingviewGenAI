@@ -1,88 +1,78 @@
-// background.js - Corrected and Refactored
+// background.js - MODIFIED
 
-console.log("Background Script: Listener registered.");
+// --- List of Queries ---
+const queries = {
+    'queryGemini1': (ticker) => `What business is USA NYSE/NASDAQ stock ${ticker} into, focusing on business focus areas in two sentences highlighting keywords, latest as of today dated news bullted and highlighted dates, any announcement of strategic alternatives in two sentences highligting key phrases. Exclude disclaimer.`,
+    'queryGemini2': (ticker) => `present busines pivots highligting keywords since inception by USA NYSE/NASDAQ stock ${ticker} in bulleted style in less than 100 words, and total percentage of institutional ownership from 13f filings as of today, highlight percentage. Exclude disclaimer.`,
+    'queryGemini3': (ticker) => `As of today, List Recent large orders dated for ${ticker} with value, highlight institutes/organizations/companies. No extra information in list items. Exclude disclaimer.`,
+    'queryGemini4': (ticker) => `For USA NYSE/NASDAQ stock ${ticker} what is current debt load, cash position and quarterly burn rate, highlight keywords. What is potential fully diluted share count and total outstanding share count based on stock dilution and warrants from recent forms 8k and 10q SEC filings considering footnotes as of today, highlight key phrases and numbers in millions, present in two short bulleted points. List all peer listed company tickers in single sentence.  Exclude disclaimer.`,
+    'queryGemini5': (ticker) => `what is the total open interest for ${ticker} across all future expiry dates and strike prices in single sentence along with put call ratio and short interest percentage as of today. present in bulleted output. Exclude disclaimer.`,
+};
 
+// --- Listener Logic ---
 browser.runtime.onMessage.addListener((request, sender, sendResponse) => {
     
-    console.log("1. Background Script: Message received.", request);
-    
-    // --- Configuration ---
-    const apiKey = 'AIzaSyAM5UmgNhkEf9F09D-wu_Dymdb4oefqP5w';
+    // ... (apiKey and apiEndpoint remain the same) ...
+    const apiKey = 'xxxxxxxxxxxxxxx';
     const apiEndpoint = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent';
     
-    let query = null; // Initialize query as null
-    let actionType = null;
-
-    // --- Conditional Query String Logic (Cleaned up) ---
-    if (request.action === 'queryGemini1') {
-        actionType = 'Full Analysis';
-        query = `What business is USA NYSE/NASDAQ stock ${request.tickerSymbol} into showing business focus areas in bold text, latest as of today dated news, any announcement of strategic alternatives, busines pivots since inception. total percentage of institutional ownership from 13f filings as of today, Recent large orders and fortune 500 tieups with value. exclude disclaimer`;
+    // Check if the request action is one of our planned queries
+    const queryBuilder = queries[request.action];
+    
+    if (queryBuilder && request.tickerSymbol) {
+        const query = queryBuilder(request.tickerSymbol); // Build the specific query
         
-    } else if (request.action === 'queryGemini2') {
-        actionType = 'Dilution/Peer Analysis';
-        query = `For USA NYSE/NASDAQ stock ${request.tickerSymbol} concise Risk of stock dilution and warrants from recent forms 8k and 10q SEC filings considering footnotes as of today. List all peer listed company tickers in single sentence. what is the total open interest across all future expiry dates and strike prices in single sentence along with put call ratio. exclude disclaimer`;
-    }
-
-    // --- Execution Block (Only runs if a valid action set the query) ---
-    if (query && request.tickerSymbol) {
+        console.log(`2. Background Script: Action matched '${request.action}'. Ticker: ${request.tickerSymbol}`);
         
-        console.log(`2. Background Script: Action matched '${actionType}'. Ticker: ${request.tickerSymbol}`);
-        console.log("3. Background Script: Initiating fetch to Gemini API. Query:", query.substring(0, 80) + "..."); // Log a snippet
-        
-        const requestBody = {
-            contents: [{
-                parts: [{ text: query }]
-            }],
-            // Use 'tools' outside of 'contents' array, as siblings
-            tools: [{
-                googleSearch: {}
-            }]
-        };
-
+        // ... (rest of the fetch logic remains the same) ...
         fetch(`${apiEndpoint}?key=${apiKey}`, {
+            // ... (headers, body, etc. remains the same) ...
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify(requestBody) // Use the cleaned-up requestBody object
+            body: JSON.stringify({
+                contents: [{
+                    parts: [{
+                        text: query
+                    }]
+                }],
+                tools: [{
+                    googleSearch: {}
+                }]
+            })
         })
         .then(response => {
-            console.log("4. Background Script: Fetch successful. Response status:", response.status);
             if (!response.ok) {
-                console.error("5. Background Script: ERROR! HTTP error status received.", response.statusText);
                 throw new Error(`HTTP error! status: ${response.status} (${response.statusText})`);
             }
             return response.json();
         })
         .then(data => {
-            console.log("6. Background Script: JSON received and parsed.");
-            
-            // Check for API errors or empty response
             if (data.error) {
-                console.error("7. Background Script: ERROR from Gemini API:", data.error.message);
                 sendResponse({ error: `Gemini API Error: ${data.error.message}` });
             } else if (data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts[0]) {
                 const resultText = data.candidates[0].content.parts[0].text;
-                console.log("8. Background Script: Sending success response to popup.");
-                // The popup listener will receive this object: { result: resultText }
-                sendResponse({ result: resultText }); 
+                // Crucially, include the original action so the popup knows which query just finished
+                sendResponse({ 
+                    result: resultText,
+                    originalAction: request.action 
+                });
             } else {
-                console.error("7. Background Script: ERROR! Gemini response data structure invalid.", data);
                 sendResponse({ error: 'Failed to parse Gemini response' });
             }
         })
         .catch(error => {
-            console.error('9. Background Script: CRITICAL Error during fetch or processing:', error.message);
+            console.error('CRITICAL Error during fetch or processing:', error.message);
             sendResponse({ error: `Failed to query Gemini: ${error.message}` });
         });
         
-        // CRITICAL: Return true to signal asynchronous response
+        // CRITICAL: Must return true to signal asynchronous response
         return true;
         
     } else {
-        // Handle case where action or ticker is missing/invalid
-        console.error("2. Background Script: ERROR! Invalid action or missing tickerSymbol:", request);
+        console.error("ERROR! Invalid action or missing tickerSymbol:", request);
         sendResponse({ error: "Invalid action or missing Ticker Symbol in message." });
-        return false; // Not needed, but good practice to show this path is synchronous
+        return false;
     }
 });
