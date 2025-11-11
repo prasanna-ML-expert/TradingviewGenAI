@@ -1,87 +1,123 @@
-// popup.js - FIXED AND REFACTORED
+// popup.js - FINAL VERSION
 
 document.addEventListener('DOMContentLoaded', function () {
-    console.log('1. DOMContentLoaded fired. Script loaded successfully.');
-
-    const queryButton1 = document.getElementById('query-button1');
-    const queryButton2 = document.getElementById('query-button2');
-    const resultElement = document.getElementById('result'); // Get the result element once
-
-    // --- FIX 1: Correctly check for both button elements ---
-    if (!queryButton1 || !queryButton2 || !resultElement) {
-        console.error('2. ERROR: Could not find one or more required elements (query-button1, query-button2, or result). Check your popup.html.');
+    const queryButton = document.getElementById('query-button1');
+    const resultElement = document.getElementById('result');
+    const spinnerElement = document.getElementById('loading-spinner');
+    // Ensure you have this element ID in your HTML
+    const currentActionElement = document.getElementById('current-action'); 
+    
+    if (!queryButton || !resultElement || !spinnerElement || !currentActionElement) {
+        console.error('ERROR: Missing required DOM elements. Check HTML IDs.');
         return;
-    } else {
-        console.log('2. All required elements found.');
+    } 
+
+    const allQueryActions = [
+        { action: 'queryGemini1', title: '1.Overview & News' },
+        { action: 'queryGemini2', title: '2.Pivots and institutional ownership' },
+        { action: 'queryGemini3', title: '3.Recent orders' },
+        { action: 'queryGemini4', title: '4.Cash, dilution, warrants, peers' },
+        { action: 'queryGemini5', title: '5.open and short interest' }
+    ];
+
+    function sendQueryToBackground(action, tickerSymbol) {
+        return new Promise((resolve, reject) => {
+            browser.runtime.sendMessage({ action: action, tickerSymbol }, function (response) {
+                if (browser.runtime.lastError) {
+                    return reject(new Error(browser.runtime.lastError.message));
+                }
+                resolve(response);
+            });
+        });
     }
 
-    // --- REUSABLE FUNCTION for querying and displaying ---
-    function runQueryAndDisplay(actionType, shouldAppend) {
-        console.log(`3. Button clicked for action ${actionType}. Starting tab query.`);
+    async function runAllQueries(tickerSymbol) {
+        
+        // --- 1. SETUP UI ---
+        resultElement.innerHTML = ''; // Clear display
+        resultElement.style.display = 'block'; // <<< CRITICAL: Make the result container visible!
+        spinnerElement.style.display = 'block'; 
+        currentActionElement.textContent = 'Initializing...';
+        console.log('Starting all 5 queries sequentially.');
 
-        // Use the modern promise-based API for query and messaging
+        try {
+            // 2. Loop through all 5 queries sequentially
+            for (const { action, title } of allQueryActions) {
+                
+                // Update the spinner text
+                currentActionElement.textContent = title;
+                
+                // CRITICAL FIX: Yield control to the browser's event loop.
+                // This allows the browser to process the UI updates (spinner text) 
+                // BEFORE the long asynchronous API call begins.
+                await new Promise(resolve => setTimeout(resolve, 0)); 
+                
+                // Add the header and the temporary status message
+                resultElement.insertAdjacentHTML('beforeend', `<hr><h3>${title}</h3>`);
+                resultElement.insertAdjacentHTML('beforeend', `<p id="${action}-status"><em>Querying...</em></p>`);
+
+                // --- Execute Query ---
+                let response;
+                try {
+                    response = await sendQueryToBackground(action, tickerSymbol);
+                } catch (e) {
+                    // Handle network failure or background script crash
+                    response = { error: `Network Error: ${e.message}` };
+                }
+
+                // --- Process Result and Clean Up Status Message ---
+                const statusElement = document.getElementById(`${action}-status`);
+                
+                if (response && response.result) {
+                    // SUCCESS PATH: Append result
+                    const htmlContent = marked.parse(response.result);
+                    
+                    if (statusElement) statusElement.remove(); // Remove "Querying..."
+                    
+                    // Append the result content
+                    resultElement.insertAdjacentHTML('beforeend', htmlContent);
+                    
+                } else {
+                    // ERROR PATH: Display error message
+                    const errorMessage = `Error in ${title}: ${response.error || 'No valid result returned'}`;
+                    
+                    if (statusElement) {
+                        statusElement.innerHTML = `<span style="color:red; font-weight:bold;">${errorMessage}</span>`;
+                    } else {
+                         resultElement.insertAdjacentHTML('beforeend', `<p style="color:red;">${errorMessage}</p>`);
+                    }
+                }
+            }
+
+        } catch (error) {
+            console.error('FATAL ERROR in Query Chain:', error);
+            resultElement.insertAdjacentHTML('beforeend', `<p style="color:red;">FATAL ERROR: ${error.message}</p>`);
+        } finally {
+            // --- 3. CLEANUP UI ---
+            spinnerElement.style.display = 'none'; 
+            currentActionElement.textContent = '';
+            resultElement.insertAdjacentHTML('beforeend', '<hr><p><strong>All Queries Complete.</strong></p>');
+        }
+    }
+
+    // --- Button Click Handler (Remains the same) ---
+    queryButton.addEventListener('click', function () {
         browser.tabs.query({ active: true, currentWindow: true })
             .then(tabs => {
-                if (tabs.length === 0) {
-                    throw new Error('4. ERROR: No active tab found.');
-                }
-                
-                // Get Ticker Symbol from Content Script
+                if (tabs.length === 0) throw new Error('No active tab found.');
                 return browser.tabs.sendMessage(tabs[0].id, { action: 'getTickerSymbol' });
             })
             .then(response => {
-                if (!response || !response.tickerSymbol) {
-                    throw new Error('5. ERROR: Content script returned no tickerSymbol.');
+                if (!response || !response.tickerSymbol) throw new Error('Content script returned no tickerSymbol.');
+                const tickerDisplay = document.getElementById('ticker-display');
+                if (tickerDisplay) {
+                    tickerDisplay.textContent = response.tickerSymbol;
                 }
-                const tickerSymbol = response.tickerSymbol;
-                console.log('5. Successfully received Ticker Symbol:', tickerSymbol);
-
-                // Send Query to Background Script
-                return browser.runtime.sendMessage({ action: actionType, tickerSymbol });
-            })
-            .then(response => {
-                if (response && response.result) {
-                    const markdownText = response.result;
-                    const htmlContent = marked.parse(markdownText);
-                    
-                    // --- FIX 2 & 3: Conditional Display Logic ---
-                    if (shouldAppend) {
-                        // Append content for the second query
-                        resultElement.insertAdjacentHTML('beforeend', htmlContent);
-                        console.log('7. Successfully received and appended Gemini result.');
-                    } else {
-                        // Replace content for the first query
-                        resultElement.innerHTML = htmlContent;
-                        console.log('7. Successfully received and set Gemini result.');
-                    }
-                } else {
-                    // Handle API error in response
-                    const errorMessage = `Error querying Gemini for ${actionType}.`;
-                    
-                    if (shouldAppend) {
-                        resultElement.insertAdjacentHTML('beforeend', `<p style="color:red;">${errorMessage}</p>`);
-                    } else {
-                        resultElement.innerHTML = `<p style="color:red;">${errorMessage}</p>`;
-                    }
-                    
-                    console.error('7. ERROR: Background script returned no valid result.');
-                }
+                runAllQueries(response.tickerSymbol);
             })
             .catch(error => {
-                // Catch any error from tab query, message send, or API response
-                console.error('Caught Error in Chain:', error.message || error);
-                resultElement.innerHTML = `<p style="color:red;">Fatal Error: ${error.message || 'Unknown error occurred.'}</p>`;
+                spinnerElement.style.display = 'none';
+                resultElement.innerHTML = `<p style="color:red;">Initial Setup Error: ${error.message}</p>`;
             });
-    }
-
-    // --- Add Event Listeners ---
-    queryButton1.addEventListener('click', () => {
-        // queryGemini1: Set/Replace the content (shouldAppend: false)
-        runQueryAndDisplay('queryGemini1', false); 
-    });
-
-    queryButton2.addEventListener('click', () => {
-        // queryGemini2: Append the content (shouldAppend: true)
-        runQueryAndDisplay('queryGemini2', true);
     });
 });
