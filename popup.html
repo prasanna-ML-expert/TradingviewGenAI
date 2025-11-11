@@ -1,38 +1,66 @@
 <!DOCTYPE html>
 <html>
-  <head>
-    <title>TradingView Gemini Integration</title>
+<head>
+    <title>Stock Analysis Tool</title>
     <style>
-      body {
-        font-family: Arial, sans-serif;
-        width: 200px;
-        height: 100px;
-        font-size: 14px;
-        text-align: center;
-        padding: 20px;
-        border: 1px solid #ccc;
-        border-radius: 5px;
-        box-shadow: 0px 0px 10px rgba(0,0,0,0.2);
-      }
-      #query-button {
-    /* Set a bottom margin to push the element below it down */
-    margin-bottom: 40px; /* Adjust 20px to your desired spacing */
-    
-    /* Make the button display as a block to ensure the margin is applied correctly */
-    display: block; 
-    
-    /* Center the button if you want it to look neat */
-    margin-left: auto;
-    margin-right: auto;
-  }
+        body {
+            font-family: Arial, sans-serif;
+            width: 400px;
+            padding: 10px;
+        }
+        #ticker-display {
+            font-weight: bold;
+            color: #007bff;
+            margin-bottom: 10px;
+        }
+        .container {
+            border: 1px solid #ccc;
+            padding: 10px;
+            margin-bottom: 15px;
+            border-radius: 5px;
+        }
+        #loading-spinner {
+            text-align: center;
+            padding: 20px;
+            color: #28a745;
+            font-size: 1.1em;
+            /* Simple Text Spinner Example */
+        }
+        /* Style for the appended results */
+        #result hr {
+            border-top: 1px solid #eee;
+        }
+        #result h3 {
+            color: #333;
+            border-bottom: 2px solid #f0f0f0;
+            padding-bottom: 5px;
+            margin-top: 20px;
+        }
+        /* Hide the initial result element to prevent flashing old content */
+        #result {
+            display: none;
+        }
     </style>
-  </head>
-  <body>
-    <h1>Gemini2.5 AI</h1>
-    <button id="query-button1">Business info news</button>
-    <button id="query-button2">Dilution, option data</button>
-    <div id="result"></div>
-    <script src="marked.min.js"></script>
+</head>
+<body>
+
+    <h2>Jay Stock Analysis </h2>
+
+    <div class="container">
+        <p>Current Ticker: <span id="ticker-display">N/A</span></p>
+
+        <button id="query-button1">Run Full 5-Part Analysis</button>
+    </div>
+
+    <div id="loading-spinner" style="display: none;">
+        <p><em>(Executing query for <span id="current-action">...</span>)</em></p>
+    </div>
+
+    <div id="result">
+        </div>
+
+
     <script src="popup.js"></script>
-  </body>
+    <script src="marked.min.js"></script> 
+    </body>
 </html>
