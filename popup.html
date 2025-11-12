@@ -51,7 +51,16 @@
 
         <button id="query-button1">Run Full 5-Part Analysis</button>
     </div>
-
+      <div id="manual-queries-container" class="container">
+      <button id="manual-query-1" data-action="queryGemini1">1.Overview news</button>
+      <button id="manual-query-2" data-action="queryGemini2">2.Instituions prcnt</button>
+      <button id="manual-query-3" data-action="queryGemini3">3.Orders</button>
+      <button id="manual-query-4" data-action="queryGemini4">4.Dilution peers</button>
+      <button id="manual-query-5" data-action="queryGemini5">5.open short interest</button>
+      <p style="font-size: 0.85em; margin-top: 10px;">
+          *Results for manual runs will append below.*
+      </p>
+    </div>
     <div id="loading-spinner" style="display: none;">
         <p><em>(Executing query for <span id="current-action">...</span>)</em></p>
     </div>
