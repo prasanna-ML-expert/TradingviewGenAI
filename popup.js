@@ -11,7 +11,14 @@ document.addEventListener('DOMContentLoaded', function () {
         console.error('ERROR: Missing required DOM elements. Check HTML IDs.');
         return;
     } 
-
+    const manualQueryActions = {
+        'queryGemini1': '1.Overview & News',
+        'queryGemini2': '2.Pivots and institutional ownership',
+        'queryGemini3': '3.Recent orders',
+        'queryGemini4': '4.Cash, dilution, warrants, peers',
+        'queryGemini5': '5.open and short interest'
+    };
+    
     const allQueryActions = [
         { action: 'queryGemini1', title: '1.Overview & News' },
         { action: 'queryGemini2', title: '2.Pivots and institutional ownership' },
@@ -99,7 +106,65 @@ document.addEventListener('DOMContentLoaded', function () {
             resultElement.insertAdjacentHTML('beforeend', '<hr><p><strong>All Queries Complete.</strong></p>');
         }
     }
+    async function runSingleQuery(tickerSymbol, action, title) {
+        // Prepare display for a single manual run
+        spinnerElement.style.display = 'block';
+        currentActionElement.textContent = `Running: ${title}`;
+        
+        try {
+            // Append the header and status message
+            resultElement.insertAdjacentHTML('beforeend', `<hr><h3>${title} (Manual Run)</h3>`);
+            resultElement.insertAdjacentHTML('beforeend', `<p id="${action}-manual-status"><em>Querying...</em></p>`);
 
+            const response = await sendQueryToBackground(action, tickerSymbol);
+            const statusElement = document.getElementById(`${action}-manual-status`);
+            
+            if (response && response.result) {
+                // Success: Remove status and append result
+                if (statusElement) statusElement.remove();
+                const htmlContent = marked.parse(response.result);
+                resultElement.insertAdjacentHTML('beforeend', htmlContent);
+                
+            } else {
+                // Error: Display error message
+                const errorMessage = `Error in ${title}: ${response.error || 'No valid result returned'}`;
+                if (statusElement) {
+                    statusElement.innerHTML = `<span style="color:red; font-weight:bold;">${errorMessage}</span>`;
+                }
+            }
+        } catch (error) {
+            resultElement.insertAdjacentHTML('beforeend', `<p style="color:red;">Query Error: ${error.message}</p>`);
+        } finally {
+            spinnerElement.style.display = 'none';
+            currentActionElement.textContent = '';
+        }
+    }
+
+    // --- Common Logic to Get Ticker ---
+    async function getTickerAndRun(runnerFunction, action, title) {
+        try {
+            const tabs = await browser.tabs.query({ active: true, currentWindow: true });
+            if (tabs.length === 0) throw new Error('No active tab found.');
+
+            const response = await browser.tabs.sendMessage(tabs[0].id, { action: 'getTickerSymbol' });
+            if (!response || !response.tickerSymbol) throw new Error('Ticker symbol not found.');
+            
+            // CRITICAL: Ensure result area is visible before running!
+            resultElement.style.display = 'block'; 
+
+            if (action) {
+                // Manual Single Run
+                runnerFunction(response.tickerSymbol, action, title);
+            } else {
+                // Existing Auto Run (Action is null/undefined)
+                runnerFunction(response.tickerSymbol);
+            }
+
+        } catch (error) {
+            spinnerElement.style.display = 'none';
+            alert(`Setup Failed: ${error.message}`);
+        }
+    }
     // --- Button Click Handler (Remains the same) ---
     queryButton.addEventListener('click', function () {
         browser.tabs.query({ active: true, currentWindow: true })
@@ -120,4 +185,18 @@ document.addEventListener('DOMContentLoaded', function () {
                 resultElement.innerHTML = `<p style="color:red;">Initial Setup Error: ${error.message}</p>`;
             });
     });
+    const manualContainer = document.getElementById('manual-queries-container');
+    if (manualContainer) {
+        const manualButtons = manualContainer.querySelectorAll('button[data-action]');
+        
+        manualButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                const action = button.getAttribute('data-action');
+                const title = manualQueryActions[action];
+                if (action && title) {
+                    getTickerAndRun(runSingleQuery, action, title);
+                }
+            });
+        });
+    }
 });
