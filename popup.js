@@ -6,6 +6,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const spinnerElement = document.getElementById('loading-spinner');
     // Ensure you have this element ID in your HTML
     const currentActionElement = document.getElementById('current-action'); 
+    const clearButton = document.getElementById('clear-results-button');
     
     if (!queryButton || !resultElement || !spinnerElement || !currentActionElement) {
         console.error('ERROR: Missing required DOM elements. Check HTML IDs.');
@@ -165,6 +166,15 @@ document.addEventListener('DOMContentLoaded', function () {
             alert(`Setup Failed: ${error.message}`);
         }
     }
+    
+    function clearResults() {
+        const resultElement = document.getElementById('result');
+        if (resultElement) {
+            resultElement.innerHTML = '';
+            resultElement.style.display = 'none'; // Optional: Hide the container when empty
+            console.log("Results cleared.");
+        }
+    }
     // --- Button Click Handler (Remains the same) ---
     queryButton.addEventListener('click', function () {
         browser.tabs.query({ active: true, currentWindow: true })
@@ -198,5 +208,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
             });
         });
+    }
+    if (clearButton) {
+        clearButton.addEventListener('click', clearResults);
     }
 });
