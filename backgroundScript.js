@@ -13,7 +13,7 @@ const queries = {
 browser.runtime.onMessage.addListener((request, sender, sendResponse) => {
     
     // ... (apiKey and apiEndpoint remain the same) ...
-    const apiKey = 'xxxxxxxxxxxxxxx';
+    const apiKey = 'xxxxxxxxxxxxxxxxxxxxxxxxxxxx';
     const apiEndpoint = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent';
     
     // Check if the request action is one of our planned queries
