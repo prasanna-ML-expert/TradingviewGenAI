@@ -1,54 +1,59 @@
-// --- Start of Script Execution Debug ---
-console.log("Content Script: Ticker fetching script loaded on page.");
-// ---------------------------------------
+// contentScript_ticker.js
 
+console.log("Ticker Retrieval Script Loaded.");
+
+/**
+ * Attempts to retrieve the current ticker symbol from the TradingView chart header.
+ * Applies cleaning logic to remove exchange prefixes (e.g., NYSE:).
+ * @returns {string | null} The cleaned ticker symbol or null if not found.
+ */
 function getTickerSymbol() {
-    // --- Debugging DOM Selection ---
-    console.log("Content Script: Attempting to query for ticker element...");
+    // 1. PRIMARY SELECTOR (Most Reliable)
+    const selector1 = '.tv-symbol-header__symbol, [data-name="symbol-edit"]'; 
+    const tickerElement1 = document.querySelector(selector1);
 
-    // The selector is complex and might be failing.
-    const selector = '[class*="title"][type="button"]';
-    const tickerElement = document.querySelector(selector);
-    
-    if (!tickerElement) {
-        console.error(`Content Script: ERROR! Ticker element not found using selector: ${selector}`);
-        return null; // Return null if the element is not found
+    if (tickerElement1 && tickerElement1.textContent) {
+        // Apply cleaning logic: split by ':', take the last part, and trim whitespace
+        const symbol = tickerElement1.textContent.split(':').pop().trim();
+        if (symbol) {
+             console.log("Ticker Script: Found Ticker (Method 1):", symbol);
+             return symbol;
+        }
     }
 
-    // Attempting to read textContent *from the element*
-    const tickerText = tickerElement.textContent;
+    // 2. FALLBACK SELECTOR (For alternative header/button elements)
+    const selector2 = '[class*="title"][type="button"]';
+    const tickerElement2 = document.querySelector(selector2);
+    
+    if (!tickerElement2) {
+        console.error("Ticker Script: ERROR! Ticker element not found using any selectors.");
+        return null;
+    }
+
+    // Attempting to read textContent from the element
+    const tickerText = tickerElement2.textContent;
     
     if (tickerText) {
-        const trimmedTicker = tickerText.trim();
-        console.log("Content Script: Found and returning Ticker Symbol:", trimmedTicker);
-        return trimmedTicker;
+        // Apply the same robust cleaning logic to the fallback result
+        const trimmedTicker = tickerText.split(':').pop().trim();
+        
+        if (trimmedTicker) {
+            console.log("Ticker Script: Found Ticker (Method 2):", trimmedTicker);
+            return trimmedTicker;
+        }
     }
 
-    console.error("Content Script: ERROR! Ticker element found, but its textContent was empty or null.");
+    console.error("Ticker Script: ERROR! Ticker element found, but its textContent was empty or null after cleaning.");
     return null;
 }
 
+// Listener for the 'getTickerSymbol' action. This is SYNCHRONOUS.
 browser.runtime.onMessage.addListener((request, sender, sendResponse) => {
-    // --- Debugging Message Listener ---
-    console.log("Content Script: Message received.", request);
-
     if (request.action === 'getTickerSymbol') {
-        console.log("Content Script: Action matches 'getTickerSymbol'. Calling getTickerSymbol().");
-        
+        // This is a fast, synchronous call, eliminating the timeout risk.
         const tickerSymbol = getTickerSymbol();
+        sendResponse({ tickerSymbol });
         
-        // --- Debugging the Response ---
-        if (tickerSymbol) {
-            console.log("Content Script: Sending response back to popup with symbol:", tickerSymbol);
-        } else {
-            console.warn("Content Script: Sending response back to popup with NULL symbol.");
-        }
-
-        // The sendResponse call must be synchronous inside the listener or return true for async
-        sendResponse({ tickerSymbol }); 
-        
-        // Add return true if you switch to an async function, but for now, it's fine.
-    } else {
-        console.warn("Content Script: Message received, but action did not match 'getTickerSymbol'.");
+        // No 'return true' is needed as the response is synchronous.
     }
 });
