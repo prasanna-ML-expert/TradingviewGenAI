@@ -53,10 +53,9 @@
         <button id="clear-results-button" style="background-color: #dc3545; color: white; margin-left: 10px;">Clear All Results</button>
             <select id="ticker-group-select">
         <option value="" disabled selected>-- Choose a Group --</option>
-        <option value="quantum_computing">Quantum Computing</option>
+        <option value="quantum">Quantum Computing</option>
         <option value="power_management_chips">Power Management & Chips</option>
         <option value="uas_defense_robotics">UAS, Defense & Robotics</option>
-        <option value="batteries_storage_materials">Batteries, Storage & Materials (Full)</option>
         <option value="lidar_sensing">Lidar & Sensing</option>
         <option value="service_robotics">Service Robotics</option>
         <option value="autonomous_driving">Autonomous Driving & AV</option>
@@ -67,16 +66,16 @@
         <option value="ev_charging_infrastructure">EV Charging Infrastructure</option>
         <option value="evtol_air_mobility">eVTOL & Air Mobility</option>
         <option value="hydrogen_fuel_cells">Hydrogen & Fuel Cells</option>
-        <option value="data_centers_general">Data Centers (General)</option>
-        <option value="new_nuclear_energy">New Nuclear Energy</option>
-        <option value="batteries_storage_subgroup1">Batteries & Storage (Subgroup 1)</option>
-        <option value="batteries_storage_subgroup2">Batteries & Storage (Subgroup 2)</option>
-        <option value="battery_materials_subgroup">Battery Materials (Subgroup)</option>
-        <option value="power_management_chips_subgroup">Power Management (Subgroup)</option>
-        <option value="ai_infrastructure_cloud">AI Infrastructure & Cloud</option>
+        <option value="data_centers_REIT">Data Centers REIT</option>
+        <option value="new_nuclear_energy">Nuclear Energy</option>
+        <option value="batteries_storage_tech">Batteries Tech</option>
+        <option value="batteries_storage_sw">Batteries sw</option>
+        <option value="battery_materials_mining">Battery Mining</option>
+        <option value="Hyperscalers">AI Infrastructure & Cloud</option>
     </select>
     
     <button id="populate-charts-button">Populate Selected Charts</button>
+    <button id="startButton">Summary PDF</button>
     </div>
       <div id="manual-queries-container" class="container">
       <button id="manual-query-1" data-action="queryGemini1">1.Overview news</button>
@@ -91,12 +90,14 @@
     <div id="loading-spinner" style="display: none;">
         <p><em>(Executing query for <span id="current-action">...</span>)</em></p>
     </div>
-
+<div id="results-display"></div>
     <div id="result">
         </div>
 
 
     <script src="popup.js"></script>
     <script src="marked.min.js"></script> 
+    <script src="jspdf.umd.min.js"></script> 
+    <script src="html2pdf.bundle.min.js"></script>
     </body>
 </html>

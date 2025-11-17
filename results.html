@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Quantum Analysis Report</title>
+    <script src="jspdf.umd.min.js"></script> 
+    <script src="html2canvas.min.js"></script>
+    <script src="html2pdf.bundle.min.js"></script>
+
+    <style>
+        /* CSS for landscape table */
+        @media print {
+            @page { 
+                size: landscape; 
+                margin: 0.5in;
+            }
+        }
+        body { 
+            font-family: sans-serif; 
+            margin: 20px; 
+        }
+        h1 { font-size: 18px; }
+        /* Table styling for better PDF rendering */
+        table { 
+            width: 100%; 
+            border-collapse: collapse; 
+            table-layout: fixed; 
+        }
+        th, td { 
+            border: 1px solid #ddd; 
+            padding: 8px; 
+            text-align: left; 
+            font-size: 10px;
+            word-wrap: break-word;
+        }
+        th { background-color: #f2f2f2; }
+        .screenshot-container {
+            margin-top: 20px;
+            text-align: center;
+        }
+        .screenshot-container img {
+            max-width: 90%; /* Ensure image fits within PDF width */
+            height: auto;
+            border: 1px solid #ccc;
+            box-shadow: 2px 2px 5px rgba(0,0,0,0.2);
+        }
+    </style>
+</head>
+<body>
+  <div id="printable-content">
+    <h1>Stock Comparative Analysis Report By www.JayIndicators.com</h1>
+    <p id="status">By www.JayIndicators.com</p>
+    <div id="table-container"></div>
+  </div>
+    <div id="screenshot-output" class="screenshot-container"></div>
+    
+    <script src="pdf_generator.js"></script>
+
+</body>
+</html>

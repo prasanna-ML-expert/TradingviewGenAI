@@ -1,5 +1,27 @@
 // popup.js - FINAL VERSION
-
+    // --- 1. Define the Ticker Groups (MUST match the size of your layout, e.g., 8) ---
+    const TICKET_GROUPS = {
+    'quantum': ['ionq', 'qbts','rgti','qubt'],
+    'power_management_chips': ['nvts', 'on', 'aosl', 'mpwr', 'powi', 'wolf'],
+    'uas_defense_robotics': ['uavs', 'dpro', 'rcat', 'zena', 'onds', 'avav', 'ktos', 'umac', 'spai'],
+    'lidar_sensing': ['aeva', 'lazr', 'mvis', 'lidr', 'oust', 'hsai', 'indi', 'arbe', 'cohr', 'trmb'],
+    'service_robotics': ['rr', 'serv', 'prct', 'zbra', 'irbt'],
+    'autonomous_driving': ['mbly', 'aur', 'tsla', 'xpev', 'kdk'],
+    'launch_space_systems': ['rklb', 'fly', 'mnts', 'astr', 'spce'],
+    'lunar_space_infrastructure': ['lunr', 'rdw', 'mda', 'lhx'],
+    'earth_observation': ['pl', 'bksy', 'spir', 'satl'],
+    'satellite_communications': ['asts', 'irdm', 'sats', 'vsat'],
+    'ev_charging_infrastructure': ['evgo', 'blnk', 'chpt', 'beem', 'adse'],
+    'evtol_air_mobility': ['achr', 'joby', 'evex', 'evtl', 'eh'],
+    'hydrogen_fuel_cells': ['fcel', 'be', 'plug', 'hyln', 'bw'],
+    'data_centers_REIT': ['dlr', 'eqix', 'qtx'],
+    'new_nuclear_energy': ['nne', 'ccj', 'smr', 'bwxt', 'oklo', 'ceg'],
+    'batteries_storage_tech': ['qs', 'frey', 'envx', 'ses', 'mvst', 'ampx', 'sldp'],
+    'batteries_storage_sw': ['enph', 'stem', 'flnc', 'eose', 'gwh'],
+    'battery_materials_mining': ['atlx', 'abat', 'alb', 'sqm', 'sgml', 'pll', 'lac', 'kulr'],
+    'Hyperscalers': ['crwv', 'nbis', 'alab', 'cifr', 'apld', 'corz','wulf']
+    };
+    // --- END Ticker Groups ---
 document.addEventListener('DOMContentLoaded', function () {
     const queryButton = document.getElementById('query-button1');
     const resultElement = document.getElementById('result');
@@ -216,30 +238,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const selectElement = document.getElementById('ticker-group-select');
     const populateButton = document.getElementById('populate-charts-button');
 
-    // --- 1. Define the Ticker Groups (MUST match the size of your layout, e.g., 8) ---
-    const TICKET_GROUPS = {
-    'quantum': ['ionq', 'qbts', 'rgti', 'qubt'],
-    'power_management_chips': ['nvts', 'on', 'aosl', 'mpwr', 'powi', 'wolf'],
-    'uas_defense_robotics': ['uavs', 'dpro', 'rcat', 'zena', 'onds', 'avav', 'ktos', 'umac', 'spai'],
-    'batteries_storage_materials': ['qs', 'frey', 'envx', 'ses', 'mvst', 'ampx', 'sldp', 'enph', 'stem', 'flnc', 'eose', 'gwh', 'atlx', 'abat', 'alb', 'sqm', 'sgml', 'pll', 'lac', 'kulr'],
-    'lidar_sensing': ['aeva', 'lazr', 'mvis', 'lidr', 'oust', 'hsai', 'indi', 'arbe', 'cohr', 'trmb'],
-    'service_robotics': ['rr', 'serv', 'prct', 'zbra', 'irbt'],
-    'autonomous_driving': ['mbly', 'aur', 'tsla', 'xpev', 'kdk'],
-    'launch_space_systems': ['rklb', 'fly', 'mnts', 'astr', 'spce'],
-    'lunar_space_infrastructure': ['lunr', 'rdw', 'mda', 'lhx'],
-    'earth_observation': ['pl', 'bksy', 'spir', 'satl'],
-    'satellite_communications': ['asts', 'irdm', 'sats', 'vsat'],
-    'ev_charging_infrastructure': ['evgo', 'blnk', 'chpt', 'beem', 'adse'],
-    'evtol_air_mobility': ['achr', 'joby', 'evex', 'evtl', 'eh'],
-    'hydrogen_fuel_cells': ['fcel', 'be', 'plug', 'hyln', 'bw'],
-    'data_centers_REIT': ['dlr', 'eqix', 'qtx'],
-    'new_nuclear_energy': ['nne', 'ccj', 'smr', 'bwxt', 'oklo', 'ceg'],
-    'batteries_storage_tech': ['qs', 'frey', 'envx', 'ses', 'mvst', 'ampx', 'sldp'],
-    'batteries_storage_sw': ['enph', 'stem', 'flnc', 'eose', 'gwh'],
-    'battery_materials_mining': ['atlx', 'abat', 'alb', 'sqm', 'sgml', 'pll', 'lac', 'kulr'],
-    'Hyperscalers': ['crwv', 'nbis', 'alab', 'oklo', 'apld', 'corz']
-    };
-    // --- END Ticker Groups ---
+
 
     // 2. Attach Listener to the Populate Button
     populateButton.addEventListener('click', () => {
@@ -284,4 +283,61 @@ document.addEventListener('DOMContentLoaded', function () {
                 alert("Failed to communicate with chart page. Ensure you are on a TradingView chart.");
             });
     }
+
+});
+
+document.getElementById('startButton').addEventListener('click', () => {
+
+    const statusElement = document.getElementById('results-display');
+    const selectElement = document.getElementById('ticker-group-select');
+    const selectedGroupKey = selectElement.value;
+
+    if (!selectedGroupKey) {
+        alert("Please select a ticker group first.");
+        return;
+    }
+
+    const selectedList = TICKET_GROUPS[selectedGroupKey];
+    let tickers1 = selectedList.map(t => t.trim().toUpperCase()); // Use the array directly
+    const tickerString = tickers1.join(', ').trim();
+    if (!tickerString) {
+        statusElement.textContent = "Please enter tickers.";
+        return;
+    }
+
+    // Prepare and sanitize the list of tickers
+    const tickers = tickerString.split(',').map(t => t.trim().toUpperCase()).filter(t => t.length > 0);
+    
+    if (tickers.length === 0) {
+        statusElement.textContent = "Please enter valid tickers.";
+        return;
+    }
+
+    statusElement.textContent = `Starting analysis for ${tickers.join(', ')}... Please wait for the PDF to download.`;
+    
+    // Use 'browser' for Firefox
+    browser.runtime.sendMessage({
+        action: 'startAnalysis',
+        tickers: tickers
+    });
+});
+const resultsDisplay = document.getElementById('results-display'); 
+
+function updateProgressDisplay(ticker, step, message) {
+    if (step === 0) {
+        // Clear previous results when starting a new ticker
+        resultsDisplay.innerHTML = `<p><strong>Processing: ${ticker}</strong></p>`;
+    }
+    
+    // Update the progress message
+    const progressText = `[${step}/5] ${message}`;
+    resultsDisplay.innerHTML = `<p>${progressText}</p>`; 
+    
+    // You can also update a dedicated status bar here
+}
+browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
+    if (message.action === 'displayProgress') {
+        updateProgressDisplay(message.ticker, message.step, message.message);
+    }
+    // ... (rest of your existing message handling) ...
 });
