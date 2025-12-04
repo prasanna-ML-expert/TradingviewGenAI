@@ -49,8 +49,8 @@
     <div class="container">
         <p>Current Ticker: <span id="ticker-display">N/A</span></p>
 
-        <button id="query-button1">Run Full 5-Part Analysis</button>
-        <button id="clear-results-button" style="background-color: #dc3545; color: white; margin-left: 10px;">Clear All Results</button>
+
+
             <select id="ticker-group-select">
         <option value="" disabled selected>-- Choose a Group --</option>
         <option value="quantum">Quantum Computing</option>
@@ -59,23 +59,27 @@
         <option value="lidar_sensing">Lidar & Sensing</option>
         <option value="service_robotics">Service Robotics</option>
         <option value="autonomous_driving">Autonomous Driving & AV</option>
-        <option value="launch_space_systems">Launch & Space Systems</option>
-        <option value="lunar_space_infrastructure">Lunar & Space Infrastructure</option>
+        <option value="space_launch_systems">Space & Launch Systems</option>
         <option value="earth_observation">Earth Observation & Imagery</option>
         <option value="satellite_communications">Satellite Communications</option>
         <option value="ev_charging_infrastructure">EV Charging Infrastructure</option>
         <option value="evtol_air_mobility">eVTOL & Air Mobility</option>
         <option value="hydrogen_fuel_cells">Hydrogen & Fuel Cells</option>
-        <option value="data_centers_REIT">Data Centers REIT</option>
+        <option value="cybersecurity">Data Centers REIT</option>
         <option value="new_nuclear_energy">Nuclear Energy</option>
         <option value="batteries_storage_tech">Batteries Tech</option>
         <option value="batteries_storage_sw">Batteries sw</option>
         <option value="battery_materials_mining">Battery Mining</option>
         <option value="Hyperscalers">AI Infrastructure & Cloud</option>
+        <option value="Mining">Mining</option>
     </select>
-    
-    <button id="populate-charts-button">Populate Selected Charts</button>
-    <button id="startButton">Summary PDF</button>
+    <button id="toggleBtn">Play</button>
+
+    <input type="text" id="tickerInput" placeholder="e.g., TSLA, NVDA, AAPL">
+
+    <input type="text" id="snapshotUrl" placeholder="(Optional) TV Chart img URL">
+
+
     </div>
       <div id="manual-queries-container" class="container">
       <button id="manual-query-1" data-action="queryGemini1">1.Overview news</button>
@@ -83,6 +87,8 @@
       <button id="manual-query-3" data-action="queryGemini3">3.Orders</button>
       <button id="manual-query-4" data-action="queryGemini4">4.Dilution peers</button>
       <button id="manual-query-5" data-action="queryGemini5">5.open short interest</button>
+      <button id="startButton">Full Analysis</button>
+      <button id="clear-results-button" style="background-color: #dc3545; color: white; margin-left: 0px;">Clear All Results</button>
       <p style="font-size: 0.85em; margin-top: 10px;">
           *Results for manual runs will append below.*
       </p>
@@ -90,9 +96,8 @@
     <div id="loading-spinner" style="display: none;">
         <p><em>(Executing query for <span id="current-action">...</span>)</em></p>
     </div>
-<div id="results-display"></div>
-    <div id="result">
-        </div>
+    <div id="results-display"></div>
+    <div id="result"> </div>
 
 
     <script src="popup.js"></script>
