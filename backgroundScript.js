@@ -2,11 +2,13 @@
 
 // --- List of Queries ---
 const queries = {
-    'queryGemini1': (ticker) => `What business is USA NYSE/NASDAQ stock ${ticker} into, focusing on business focus areas in two sentences highlighting keywords, latest as of today dated news bullted and highlighted dates, any announcement of strategic alternatives in two sentences highligting key phrases. Exclude disclaimer.`,
+    'queryGemini1': (ticker) => `What business is USA NYSE/NASDAQ stock ${ticker} into, focusing on business focus areas in two sentences highlighting keywords, latest as of today dated news(not interested in stock price changes as standalone news item) bullted and highlighted dates, any announcement of strategic alternatives in two sentences highligting key phrases. Exclude disclaimer.`,
     'queryGemini2': (ticker) => `present busines pivots highligting keywords since inception by USA NYSE/NASDAQ stock ${ticker} in bulleted style in less than 100 words, and total percentage of institutional ownership from 13f filings as of today, highlight percentage. Exclude disclaimer.`,
     'queryGemini3': (ticker) => `As of today, List Recent large orders dated for ${ticker} with value, highlight institutes/organizations/companies. No extra information in list items. Exclude disclaimer.`,
     'queryGemini4': (ticker) => `For USA NYSE/NASDAQ stock ${ticker} what is current debt load, cash position and quarterly burn rate, highlight keywords. What is potential fully diluted share count and total outstanding share count based on stock dilution and warrants from recent forms 8k and 10q SEC filings considering footnotes as of today, highlight key phrases and numbers in millions, present in two short bulleted points. What is the market cap of the company including class A class B etc shares, highlighting the value in millions or billions. List all peer listed company tickers in single sentence.  Exclude disclaimer.`,
-    'queryGemini5': (ticker) => `what is the total open interest for ${ticker} across all future expiry dates and strike prices in single sentence along with put call ratio and short interest percentage as of today. present in bulleted output. Exclude disclaimer.`,
+   // 'queryGemini4': (ticker) => `For USA NYSE/NASDAQ stock ${ticker} what is current approaximate total debt load, approaximate total cash and equivalents in millions, What is potential fully diluted share count in millions and total outstanding share count in millions based on stock dilution, convertible notes and warrants from recent forms 8k and 10q SEC filings considering footnotes as of today. What is quarterly revenue and burn rate inclue + for profit and - for loss. What is total approaximate outstanding orders/contracts received from last 12 months in millions. Exclude disclaimer.present in comma separated numbers and no words or headings required. Return 0 if a number cannot be found or calculated.`,
+
+    'queryGemini5': (ticker) => `what is the total open interest for ${ticker} across all future expiry dates and strike prices in single sentence along with put call open interest ratio(not volume ratio) and short interest percentage as of today. Exclude disclaimer.`,
 };
 
 let allResults = {};
@@ -18,6 +20,110 @@ const queryHeaders = [
     "Cash, stock dilution, warrants, peers", 
     "Options/Short Interest"
 ];
+const URL_LIST = [
+  "https://www.tradingview.com/chart/Ls0KjlAU/",
+  "https://www.tradingview.com/chart/iHFjEihw/",
+  "https://www.tradingview.com/chart/bc9LVHG4/",
+  "https://www.tradingview.com/chart/y66m0tBS/",
+  "https://www.tradingview.com/chart/yXkclwxW/",
+  "https://www.tradingview.com/chart/gNgM9ZRC/",
+  "https://www.tradingview.com/chart/n7Ak2qQF/",
+  "https://www.tradingview.com/chart/ee3TjuCV/",
+  "https://www.tradingview.com/chart/L8RehbH2/",
+  "https://www.tradingview.com/chart/P1TUSyPv/",
+  "https://www.tradingview.com/chart/LPs0FIja/",
+  "https://www.tradingview.com/chart/6RnjuCRf/",
+  "https://www.tradingview.com/chart/bmnG95Wd/",
+  "https://www.tradingview.com/chart/ThpDElE5/",
+  "https://www.tradingview.com/chart/kAOiJNLK/",
+  "https://www.tradingview.com/chart/XFDtWdGp/",
+  "https://www.tradingview.com/chart/rPD36MDH/"
+];
+const URL_MAP = {
+  "quantum": "https://www.tradingview.com/chart/Ls0KjlAU/",
+  "power_management_chips": "https://www.tradingview.com/chart/iHFjEihw/",
+  "uas_defense_robotics": "https://www.tradingview.com/chart/bc9LVHG4/",
+  "lidar_sensing": "https://www.tradingview.com/chart/y66m0tBS/",
+  "service_robotics": "https://www.tradingview.com/chart/yXkclwxW/",
+  "autonomous_driving": "https://www.tradingview.com/chart/gNgM9ZRC/",
+  "space_launch_systems": "https://www.tradingview.com/chart/n7Ak2qQF/",
+  "earth_observation": "https://www.tradingview.com/chart/ee3TjuCV/",
+  "ev_charging_infrastructure": "https://www.tradingview.com/chart/L8RehbH2/",
+  "evtol_air_mobility": "https://www.tradingview.com/chart/P1TUSyPv/",
+  "hydrogen_fuel_cells": "https://www.tradingview.com/chart/LPs0FIja/",
+  "new_nuclear_energy": "https://www.tradingview.com/chart/6RnjuCRf/",
+  "batteries_storage_tech": "https://www.tradingview.com/chart/bmnG95Wd/",
+  "batteries_storage_sw": "https://www.tradingview.com/chart/ThpDElE5/",
+  "battery_materials_mining": "https://www.tradingview.com/chart/kAOiJNLK/",
+  "Hyperscalers": "https://www.tradingview.com/chart/XFDtWdGp/",
+  "Mining": "https://www.tradingview.com/chart/rPD36MDH/"
+};
+const ALARM_NAME = "urlRotatorAlarm";
+const INTERVAL_MINUTES = 3;
+const STORAGE_KEY_INDEX = 'currentUrlIndex';
+const STORAGE_KEY_STATUS = 'isRotatorRunning';
+
+let isRunning = false; // Internal runtime state
+
+// --- Core Rotation Function ---
+async function rotateUrl() {
+  if (!isRunning) return; // Only run if playing
+
+  let result = await browser.storage.local.get(STORAGE_KEY_INDEX);
+  let currentIndex = result[STORAGE_KEY_INDEX] || 0;
+
+  const nextUrl = URL_LIST[currentIndex];
+
+  let newIndex = (currentIndex + 1) % URL_LIST.length;
+  await browser.storage.local.set({ [STORAGE_KEY_INDEX]: newIndex });
+
+  let tabs = await browser.tabs.query({ active: true, currentWindow: true });
+  
+  if (tabs.length > 0) {
+    browser.tabs.update(tabs[0].id, { url: nextUrl })
+      .catch(error => { console.error(`Navigation failed: ${error}`); });
+  }
+}
+
+// --- Control Functions ---
+async function startRotation() {
+  await browser.storage.local.set({ [STORAGE_KEY_STATUS]: true });
+  isRunning = true;
+  browser.alarms.create(ALARM_NAME, { periodInMinutes: INTERVAL_MINUTES });
+  console.log("Rotation Started");
+}
+
+async function stopRotation() {
+  await browser.storage.local.set({ [STORAGE_KEY_STATUS]: false });
+  isRunning = false;
+  browser.alarms.clear(ALARM_NAME);
+  console.log("Rotation Paused");
+}
+
+async function manualJump(urlKey) {
+
+    let jumpUrl = URL_MAP[urlKey];
+    
+    // Set the index for the next auto-rotation
+    let newIndex = 0;
+    await browser.storage.local.set({ [STORAGE_KEY_INDEX]: newIndex });
+    
+    let tabs = await browser.tabs.query({ active: true, currentWindow: true });
+    if (tabs.length > 0) {
+        browser.tabs.update(tabs[0].id, { url: jumpUrl })
+            .catch(error => { console.error(`Manual jump failed: ${error}`); });
+    }
+}
+browser.alarms.onAlarm.addListener((alarm) => {
+  if (alarm.name === ALARM_NAME) {
+    rotateUrl();
+  }
+});
+browser.storage.local.get(STORAGE_KEY_STATUS).then(result => {
+  if (result[STORAGE_KEY_STATUS] === true) {
+    startRotation();
+  }
+});
 
 function sendPdfDataWhenReady(data, tickers, headers) {
     
@@ -37,7 +143,9 @@ function sendPdfDataWhenReady(data, tickers, headers) {
                 action: 'generatePDF',
                 data: data,
                 tickers: tickers,
-                headers: headers
+                headers: headers,
+                groupName: currentGroupName,
+                imageUrl: currentImageUrl 
             });
             
             // Send the final completion message to the popup
@@ -55,15 +163,27 @@ function sendPdfDataWhenReady(data, tickers, headers) {
 }
 
 let chartTabId = null; // Store the ID of the chart tab
+let currentGroupName = null;
+let currentImageUrl = null;
 // --- Listener Logic ---
 browser.runtime.onMessage.addListener((request, sender, sendResponse) => {
     
-    const apiKey = 'AIzaSyBh9OaafDq99Hq0ieFMedSt1UX_oHkkb1U';
+    const apiKey = 'AIzaSyCmAX5oWl4VVr5AldHz5zWs-RvUfe6Xs4E';
     const apiEndpoint = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent';
     
     // Check if the request action is one of our planned queries
     const queryBuilder = queries[request.action];
     const isGeminiQuery = request.action && request.action.startsWith('queryGemini');
+    if (request.action === "start") {
+        startRotation();
+        return
+      } else if (request.action === "stop") {
+        stopRotation();
+        return
+      } else if (request.action === "jump") {
+        manualJump(request.urlKey);
+        return
+      }
     if (isGeminiQuery && request.tickerSymbol) {
         const query = queryBuilder(request.tickerSymbol); // Build the specific query
         
@@ -120,8 +240,10 @@ browser.runtime.onMessage.addListener((request, sender, sendResponse) => {
     if (request.action === 'startAnalysis') {
         allResults = {};
         tickersToProcess = request.tickers;
+        currentGroupName = request.ticker_group
+        currentImageUrl = request.imageUrl || null;
         console.log("Starting analysis for:", tickersToProcess);
-        
+
         // **CRITICAL:** The 'startAnalysis' message comes from popup.js, 
         // which does NOT have a useful sender.tab to identify the chart.
         // We must still query the active tab to send the first 'runQueries' message.
@@ -237,6 +359,38 @@ browser.runtime.onMessage.addListener((request, sender, sendResponse) => {
         // Handle the promise resolution and send the response back
         asyncResponse.then(sendResponse);
         return true; 
+    }
+    
+    if (request.action === 'fetchImageAsBase64') {
+        const imageUrl = request.url;
+        
+        const asyncResponse = (async () => {
+            if (!imageUrl) {
+                console.error("fetchImageAsBase64 received null URL.");
+                return { success: false };
+            }
+            
+            try {
+                // Fetch the image from the external URL using the background script's privilege
+                const response = await fetch(imageUrl);
+                const blob = await response.blob();
+
+                // Convert the Blob to a Base64 Data URL
+                return await new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onloadend = () => resolve({ success: true, base64Data: reader.result });
+                    reader.onerror = reject;
+                    reader.readAsDataURL(blob);
+                });
+
+            } catch (error) {
+                console.error("Background script failed to fetch image:", error);
+                return { success: false, error: error.message };
+            }
+        })();
+
+        asyncResponse.then(sendResponse);
+        return true; // Must return true for async response
     }
 
     // Default return for unhandled messages
