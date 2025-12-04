@@ -4,18 +4,30 @@
 browser.runtime.onMessage.addListener((request, sender, sendResponse) => {
     if (request.action === 'generatePDF') {
         document.getElementById('status').textContent = "Data received. Building table...";
-        buildTableAndDownloadPDF(request.data, request.tickers, request.headers);
+        getBase64FromBackground(request.imageUrl).then(base64Image => {
+            buildTableAndDownloadPDF(
+                request.data, 
+                request.tickers, 
+                request.headers,
+                request.groupName,
+                base64Image
+            );
+        });
+
     }
 });
-function buildTableAndDownloadPDF(results, tickers, queryHeaders) {
+function buildTableAndDownloadPDF(results, tickers, queryHeaders,groupName,base64Image) {
     const tableContainer = document.getElementById('table-container');
     // Ensure the element for the screenshot is clear, just in case
     const screenshotOutput = document.getElementById('screenshot-output');
+    const date = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+    document.title = `${groupName} Analysis Report`;
+    const fileName = `${groupName}_${date}.pdf`;
     if (screenshotOutput) {
         screenshotOutput.innerHTML = '';
     }
 
-    let htmlContent = '<table><thead><tr><th>Query</th>';
+    let htmlContent = '<table><thead><tr>';//<th>Query</th>';
 
     // 1. Build Table Headers (Tickers)
     tickers.forEach(t => {
@@ -28,7 +40,7 @@ function buildTableAndDownloadPDF(results, tickers, queryHeaders) {
         const queryKey = `queryGemini${i}`;
         const header = queryHeaders[i - 1];
 
-        htmlContent += `<tr><td><strong>${header}</strong></td>`;
+        htmlContent += `<tr>`;//<td><strong>${header}</strong></td>`;
 
         tickers.forEach(ticker => {
             const rawCellData = results[ticker][queryKey] || 'N/A';
@@ -47,12 +59,20 @@ function buildTableAndDownloadPDF(results, tickers, queryHeaders) {
 
     htmlContent += '</tbody></table>';
     tableContainer.innerHTML = htmlContent;
-    document.getElementById('status').textContent = "Table generated. Generating PDF...";
-
+    document.getElementById('status').textContent = `${groupName} stocks as of ${date}`;
+    const imageOutput = document.getElementById('image-output');
+    if (imageOutput && base64Image) {
+        imageOutput.innerHTML = `
+            <h2>TradingView Chart Snapshot</h2>
+            <img src="${base64Image}" style="max-width: 95%; height: auto; margin-bottom: 20px;">
+        `;
+    } else if (imageOutput) {
+        imageOutput.innerHTML = `<p>[No Chart Snapshot Provided or Failed to Load]</p>`;
+    }
 
     const opt = {
         margin:       0.5, // inches
-        filename:     'Quantum_Stock_Analysis.pdf',
+        filename:     fileName,
         image:        { type: 'jpeg', quality: 0.98 },
         html2canvas:  { scale: 2, logging: false, dpi: 192, letterRendering: true },
         // Set orientation to landscape for the wide table
@@ -70,7 +90,7 @@ function buildTableAndDownloadPDF(results, tickers, queryHeaders) {
         const headerHtml = "<h1>Stock Comparative Analysis Report By www.JayIndicators.com</h1>";
         element.insertAdjacentHTML('afterbegin', headerHtml);
     }
-        /*if (window.html2pdf) {
+        if (window.html2pdf) {
             window.html2pdf().set(opt).from(element).save()
                 .then(() => {
                     document.getElementById('status').textContent = "PDF generated and downloaded!";
@@ -79,8 +99,8 @@ function buildTableAndDownloadPDF(results, tickers, queryHeaders) {
                     console.error("html2pdf generation failed:", err);
                     document.getElementById('status').textContent = "Error: PDF generation failed. Check console for details.";
                 });
-        } */
-        if (window.jspdf) {
+        }
+        else if (window.jspdf) {
             // Fallback using original jsPDF logic if html2pdf isn't loaded
             const { jsPDF } = window.jspdf;
             const doc = new jsPDF('l', 'pt', 'a4');
@@ -88,7 +108,7 @@ function buildTableAndDownloadPDF(results, tickers, queryHeaders) {
             doc.html(tableContainer, {
                 callback: function (doc) {
                     document.getElementById('status').textContent = "PDF ready. Downloading...";
-                    doc.save('Quantum_Stock_Analysis_Fallback.pdf');
+                    doc.save(fileName);
                 },
                 x: 10,
                 y: 10,
@@ -98,96 +118,27 @@ function buildTableAndDownloadPDF(results, tickers, queryHeaders) {
         } else {
              document.getElementById('status').textContent = "Error: PDF library not found!";
         }
-    }, 100); // Execute asynchronously after the DOM has updated
+    }, 1000); // Execute asynchronously after the DOM has updated
 }
-async function buildTableCaptureAndDownloadPDF(results, tickers, queryHeaders) {
-    const tableContainer = document.getElementById('table-container');
-    const screenshotOutput = document.getElementById('screenshot-output');
-    
-    let htmlContent = '<table><thead><tr>';//<th>Query</th>';
 
-    // 1. Build Table Headers
-    tickers.forEach(t => { htmlContent += `<th>${t}</th>`; });
-    htmlContent += '</tr></thead><tbody>';
-
-    // 2. Build Table Rows
-    for (let i = 1; i <= 5; i++) {
-        const queryKey = `queryGemini${i}`; 
-        const header = queryHeaders[i - 1]; 
-
-        htmlContent += `<tr>`;//<td><strong>${header}</strong></td>`;
-        tickers.forEach(ticker => {
-            const rawCellData = results[ticker][queryKey] || '[N/A: Result object was empty.]'; 
-            let cleanCellData = rawCellData.replace(/\*\*(.*?)\*\*/g, '<b>$1</b>').replace(/\n/g, '<br>');
-            if (cleanCellData.includes('[ERROR:') || cleanCellData.includes('API_ERROR')) {
-                 cleanCellData = `<span style="color: red;">${cleanCellData}</span>`;
-            }
-            htmlContent += `<td>${cleanCellData}</td>`;
-        });
-        htmlContent += '</tr>';
-    }
-    htmlContent += '</tbody></table>';
-    tableContainer.innerHTML = htmlContent;
-    document.getElementById('status').textContent = "Table generated. Capturing screenshot...";
-
+async function getBase64FromBackground(url) {
+    if (!url || !url.startsWith('http')) return null;
 
     try {
-        // Send request to service worker for the chart screenshot
-        const screenshotResponse = await browser.runtime.sendMessage({ 
-            action: 'captureChartScreenshot' 
+        // Send the URL to the background script for proxying and conversion
+        const response = await browser.runtime.sendMessage({
+            action: 'fetchImageAsBase64',
+            url: url
         });
 
-        if (screenshotResponse && screenshotResponse.imageDataUrl) {
-            console.log("Chart screenshot captured successfully.");
-            const imgElement = document.createElement('img');
-            imgElement.src = screenshotResponse.imageDataUrl;
-            imgElement.alt = "Screenshot of original chart tab";
-            
-            const imgTitle = document.createElement('h2');
-            imgTitle.textContent = "Original Chart Tab Screenshot";
-            imgTitle.style.marginTop = "30px"; 
-
-            screenshotOutput.appendChild(imgTitle);
-            screenshotOutput.appendChild(imgElement);
-            document.getElementById('status').textContent = "Screenshot embedded. Generating PDF...";
+        if (response.success && response.base64Data) {
+            return response.base64Data;
         } else {
-            console.error("Failed to get chart screenshot image data:", screenshotResponse.error);
-            screenshotOutput.innerHTML = `<p style="color: red;">Error: Could not capture chart screenshot. ${screenshotResponse.error || 'Unknown error'}</p>`;
-            document.getElementById('status').textContent = "Failed to capture chart screenshot. Generating PDF without image.";
+            console.error("Background proxy failed or returned no data:", response.error);
+            return null;
         }
     } catch (error) {
-        console.error("Error during screenshot capture communication:", error);
-        screenshotOutput.innerHTML = `<p style="color: red;">Critical Error: Chart screenshot process failed.</p>`;
-        document.getElementById('status').textContent = "Critical error in screenshot. Generating PDF without image.";
+        console.error("Error communicating with background script:", error);
+        return null;
     }
-
-
-    // 3. Generate PDF using html2pdf.js (same as before)
-    document.getElementById('status').textContent = "Finalizing PDF...";
-    const element = document.body; 
-
-    const opt = {
-        margin:       0.5, 
-        filename:     'Quantum_Stock_Analysis_with_Chart_Screenshot.pdf',
-        image:        { type: 'jpeg', quality: 0.98 },
-        html2canvas:  { scale: 2, logging: false, dpi: 192, letterRendering: true },
-        jsPDF:        { unit: 'in', format: 'letter', orientation: 'landscape' }
-    };
-
-    // Use html2pdf (or jsPDF if html2pdf isn't available, but html2pdf is preferred here)
-    if (window.html2pdf) {
-        window.html2pdf().set(opt).from(element).save();
-    } else {
-        // Fallback using original jsPDF logic (may not render image)
-        const { jsPDF } = window.jspdf;
-        const doc = new jsPDF('l', 'pt', 'a4'); 
-        doc.html(element, {
-            callback: function (doc) {
-                doc.save('Quantum_Stock_Analysis_Fallback.pdf');
-            },
-            x: 10, y: 10, width: 822, windowWidth: 822 
-        });
-    }
-
-    document.getElementById('status').textContent = "PDF generated and downloaded!";
 }
