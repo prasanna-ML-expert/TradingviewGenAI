@@ -1,39 +1,54 @@
 // popup.js - FINAL VERSION
     // --- 1. Define the Ticker Groups (MUST match the size of your layout, e.g., 8) ---
     const TICKET_GROUPS = {
-    'quantum': ['ionq', 'qbts','rgti','qubt'],
+    'quantum': ['ionq','qbts','rgti','qubt','laes','arqq'],
     'power_management_chips': ['nvts', 'on', 'aosl', 'mpwr', 'powi', 'wolf'],
-    'uas_defense_robotics': ['uavs', 'dpro', 'rcat', 'zena', 'onds', 'avav', 'ktos', 'umac', 'spai'],
-    'lidar_sensing': ['aeva', 'lazr', 'mvis', 'lidr', 'oust', 'hsai', 'indi', 'arbe', 'cohr', 'trmb'],
+    'uas_defense_robotics': ['dpro', 'rcat', 'zena', 'onds', 'avav', 'ktos', 'umac', 'spai'],
+    'lidar_sensing': ['aeva', 'lazr', 'mvis', 'lidr', 'oust', 'indi', 'arbe', 'cohr'],
     'service_robotics': ['rr', 'serv', 'prct', 'zbra', 'irbt'],
     'autonomous_driving': ['mbly', 'aur', 'tsla', 'xpev', 'kdk'],
-    'launch_space_systems': ['rklb', 'fly', 'mnts', 'astr', 'spce'],
-    'lunar_space_infrastructure': ['lunr', 'rdw', 'mda', 'lhx'],
+    'space_launch_systems': ['rklb', 'fly', 'mnts', 'spce','lunr', 'rdw'],
     'earth_observation': ['pl', 'bksy', 'spir', 'satl'],
     'satellite_communications': ['asts', 'irdm', 'sats', 'vsat'],
     'ev_charging_infrastructure': ['evgo', 'blnk', 'chpt', 'beem', 'adse'],
-    'evtol_air_mobility': ['achr', 'joby', 'evex', 'evtl', 'eh'],
+    'evtol_air_mobility': ['achr', 'joby', 'evex', 'evtl'],
     'hydrogen_fuel_cells': ['fcel', 'be', 'plug', 'hyln', 'bw'],
-    'data_centers_REIT': ['dlr', 'eqix', 'qtx'],
+    'cybersecurity': ['ftnt', 'zs', 'crwd','panw'],
     'new_nuclear_energy': ['nne', 'ccj', 'smr', 'bwxt', 'oklo', 'ceg'],
-    'batteries_storage_tech': ['qs', 'frey', 'envx', 'ses', 'mvst', 'ampx', 'sldp'],
-    'batteries_storage_sw': ['enph', 'stem', 'flnc', 'eose', 'gwh'],
-    'battery_materials_mining': ['atlx', 'abat', 'alb', 'sqm', 'sgml', 'pll', 'lac', 'kulr'],
-    'Hyperscalers': ['crwv', 'nbis', 'alab', 'cifr', 'apld', 'corz','wulf']
+    'batteries_storage_tech': ['qs', 'envx', 'ses', 'mvst', 'ampx', 'sldp'],
+    'batteries_storage_sw': ['enph', 'stem', 'flnc', 'eose', 'gwh','kulr'],
+    'battery_materials_mining': ['atlx', 'abat', 'alb', 'sqm', 'sgml', 'elvr', 'lac','nb'],
+    'Hyperscalers': ['crwv', 'nbis', 'alab', 'corz', 'apld', 'cifr','wulf'],
+    'Mining': ['mara', 'clsk', 'bitf', 'hive', 'btbt', 'hut','riot','iren']
     };
     // --- END Ticker Groups ---
+    
+    
+const toggleButton = document.getElementById('toggleBtn');
+
+
+// --- Helper Functions ---
+
+function updateStatus(isRunning) {
+    if (isRunning) {
+        toggleButton.textContent = "Pause";
+    } else {
+        toggleButton.textContent = "Play";
+    }
+}
+
+
 document.addEventListener('DOMContentLoaded', function () {
-    const queryButton = document.getElementById('query-button1');
+
     const resultElement = document.getElementById('result');
     const spinnerElement = document.getElementById('loading-spinner');
     // Ensure you have this element ID in your HTML
     const currentActionElement = document.getElementById('current-action'); 
     const clearButton = document.getElementById('clear-results-button');
+    const tickerInput = document.getElementById('tickerInput');
+    const selectElement = document.getElementById('ticker-group-select');
     
-    if (!queryButton || !resultElement || !spinnerElement || !currentActionElement) {
-        console.error('ERROR: Missing required DOM elements. Check HTML IDs.');
-        return;
-    } 
+
     const manualQueryActions = {
         'queryGemini1': '1.Overview & News',
         'queryGemini2': '2.Pivots and institutional ownership',
@@ -165,22 +180,29 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // --- Common Logic to Get Ticker ---
     async function getTickerAndRun(runnerFunction, action, title) {
+        const tickerInput = document.getElementById('tickerInput');
+        
+        // --- 1. Get Ticker from Input Box ---
+        let tickerSymbol = tickerInput ? tickerInput.value.trim().toUpperCase() : null;
+        
         try {
-            const tabs = await browser.tabs.query({ active: true, currentWindow: true });
-            if (tabs.length === 0) throw new Error('No active tab found.');
+            if (!tickerSymbol) {
+                const tabs = await browser.tabs.query({ active: true, currentWindow: true });
+                if (tabs.length === 0) throw new Error('No active tab found.');
 
-            const response = await browser.tabs.sendMessage(tabs[0].id, { action: 'getTickerSymbol' });
-            if (!response || !response.tickerSymbol) throw new Error('Ticker symbol not found.');
-            
+                const response = await browser.tabs.sendMessage(tabs[0].id, { action: 'getTickerSymbol' });
+                if (!response || !response.tickerSymbol) throw new Error('Ticker symbol not found.');
+                tickerSymbol = response.tickerSymbol
+            }
             // CRITICAL: Ensure result area is visible before running!
             resultElement.style.display = 'block'; 
 
             if (action) {
                 // Manual Single Run
-                runnerFunction(response.tickerSymbol, action, title);
+                runnerFunction(tickerSymbol, action, title);
             } else {
                 // Existing Auto Run (Action is null/undefined)
-                runnerFunction(response.tickerSymbol);
+                runnerFunction(tickerSymbol);
             }
 
         } catch (error) {
@@ -197,26 +219,24 @@ document.addEventListener('DOMContentLoaded', function () {
             console.log("Results cleared.");
         }
     }
-    // --- Button Click Handler (Remains the same) ---
-    queryButton.addEventListener('click', function () {
-        browser.tabs.query({ active: true, currentWindow: true })
-            .then(tabs => {
-                if (tabs.length === 0) throw new Error('No active tab found.');
-                return browser.tabs.sendMessage(tabs[0].id, { action: 'getTickerSymbol' });
-            })
-            .then(response => {
-                if (!response || !response.tickerSymbol) throw new Error('Content script returned no tickerSymbol.');
-                const tickerDisplay = document.getElementById('ticker-display');
-                if (tickerDisplay) {
-                    tickerDisplay.textContent = response.tickerSymbol;
-                }
-                runAllQueries(response.tickerSymbol);
-            })
-            .catch(error => {
-                spinnerElement.style.display = 'none';
-                resultElement.innerHTML = `<p style="color:red;">Initial Setup Error: ${error.message}</p>`;
-            });
-    });
+    
+    if (selectElement && tickerInput) {
+        selectElement.addEventListener('change', () => {
+            const selectedGroupKey = selectElement.value;
+            let tickersString = '';
+
+            if (selectedGroupKey && TICKET_GROUPS[selectedGroupKey]) {
+                const tickersArray = TICKET_GROUPS[selectedGroupKey];
+                
+                // Join the array of tickers into a comma-separated string, capitalized and trimmed
+                tickersString = tickersArray.map(t => t.trim().toUpperCase()).join(', ');
+            }
+            
+            // Update the ticker input box with the list
+            tickerInput.value = tickersString;
+            console.log(`Input updated for group ${selectedGroupKey}: ${tickersString}`);
+        });
+    }
     const manualContainer = document.getElementById('manual-queries-container');
     if (manualContainer) {
         const manualButtons = manualContainer.querySelectorAll('button[data-action]');
@@ -235,25 +255,12 @@ document.addEventListener('DOMContentLoaded', function () {
         clearButton.addEventListener('click', clearResults);
     }
     
-    const selectElement = document.getElementById('ticker-group-select');
-    const populateButton = document.getElementById('populate-charts-button');
 
 
 
-    // 2. Attach Listener to the Populate Button
-    populateButton.addEventListener('click', () => {
-        const selectedGroupKey = selectElement.value;
 
-        if (!selectedGroupKey) {
-            alert("Please select a ticker group first.");
-            return;
-        }
 
-        const selectedList = TICKET_GROUPS[selectedGroupKey];
-        
-        // Send the selected list to the content script for population
-        sendTickerListToContentScript(selectedList);
-    });
+
 
     // 3. Function to send the list
     function sendTickerListToContentScript(tickerList) {
@@ -285,21 +292,26 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
 });
-
+document.getElementById('ticker-group-select').addEventListener('change', (event) => {
+    const selectedKey = event.target.value;
+    if (selectedKey !== "") {
+        browser.runtime.sendMessage({ action: "jump", urlKey: selectedKey });
+    }
+});
 document.getElementById('startButton').addEventListener('click', () => {
 
     const statusElement = document.getElementById('results-display');
     const selectElement = document.getElementById('ticker-group-select');
+    const snapshotUrlInput = document.getElementById('snapshotUrl'); 
     const selectedGroupKey = selectElement.value;
-
+    const snapshotUrl = snapshotUrlInput.value.trim();
     if (!selectedGroupKey) {
         alert("Please select a ticker group first.");
         return;
     }
 
-    const selectedList = TICKET_GROUPS[selectedGroupKey];
-    let tickers1 = selectedList.map(t => t.trim().toUpperCase()); // Use the array directly
-    const tickerString = tickers1.join(', ').trim();
+    const tickerInput = document.getElementById('tickerInput');
+    const tickerString = tickerInput ? tickerInput.value.trim() : '';
     if (!tickerString) {
         statusElement.textContent = "Please enter tickers.";
         return;
@@ -318,9 +330,13 @@ document.getElementById('startButton').addEventListener('click', () => {
     // Use 'browser' for Firefox
     browser.runtime.sendMessage({
         action: 'startAnalysis',
-        tickers: tickers
+        tickers: tickers,
+        ticker_group: selectedGroupKey ,
+        imageUrl: snapshotUrl 
     });
 });
+
+
 const resultsDisplay = document.getElementById('results-display'); 
 
 function updateProgressDisplay(ticker, step, message) {
@@ -341,3 +357,19 @@ browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
     }
     // ... (rest of your existing message handling) ...
 });
+
+toggleButton.addEventListener('click', () => {
+    // Determine action based on the *current* displayed text
+    const buttonText = toggleButton.textContent.trim();
+
+    if (buttonText.includes('Play')) {
+        // If the text is "Play Auto-Rotate", clicking it should START (send 'start' command)
+        browser.runtime.sendMessage({ action: "start" });
+        updateStatus(true); // Update UI to Running/Pause text
+    } else if (buttonText.includes('Pause')) {
+        // If the text is "Pause Auto-Rotate", clicking it should STOP (send 'stop' command)
+        browser.runtime.sendMessage({ action: "stop" });
+        updateStatus(false); // Update UI to Paused/Play text
+    }
+});
+
