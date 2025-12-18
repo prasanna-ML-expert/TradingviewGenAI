@@ -53,6 +53,7 @@
 
             <select id="ticker-group-select">
         <option value="" disabled selected>-- Choose a Group --</option>
+        <option value="single_chart">single chart</option>
         <option value="quantum">Quantum Computing</option>
         <option value="power_management_chips">Power Management & Chips</option>
         <option value="uas_defense_robotics">UAS, Defense & Robotics</option>
@@ -72,9 +73,10 @@
         <option value="battery_materials_mining">Battery Mining</option>
         <option value="Hyperscalers">AI Infrastructure & Cloud</option>
         <option value="Mining">Mining</option>
+        <option value="Mag7">Mag7</option>
     </select>
     <button id="toggleBtn">Play</button>
-
+    <button id="capturebutton">screenshot</button>
     <input type="text" id="tickerInput" placeholder="e.g., TSLA, NVDA, AAPL">
 
     <input type="text" id="snapshotUrl" placeholder="(Optional) TV Chart img URL">
@@ -89,6 +91,7 @@
       <button id="manual-query-5" data-action="queryGemini5">5.open short interest</button>
       <button id="startButton">Full Analysis</button>
       <button id="clear-results-button" style="background-color: #dc3545; color: white; margin-left: 0px;">Clear All Results</button>
+      <button id="GeminiChat">Gemini Chat</button>
       <p style="font-size: 0.85em; margin-top: 10px;">
           *Results for manual runs will append below.*
       </p>
