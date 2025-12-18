@@ -16,10 +16,11 @@
     'cybersecurity': ['ftnt', 'zs', 'crwd','panw'],
     'new_nuclear_energy': ['nne', 'ccj', 'smr', 'bwxt', 'oklo', 'ceg'],
     'batteries_storage_tech': ['qs', 'envx', 'ses', 'mvst', 'ampx', 'sldp'],
-    'batteries_storage_sw': ['enph', 'stem', 'flnc', 'eose', 'gwh','kulr'],
+    'batteries_storage_sw': ['enph', 'stem', 'flnc', 'eose', 'gwh','kulr','te'],
     'battery_materials_mining': ['atlx', 'abat', 'alb', 'sqm', 'sgml', 'elvr', 'lac','nb'],
     'Hyperscalers': ['crwv', 'nbis', 'alab', 'corz', 'apld', 'cifr','wulf'],
-    'Mining': ['mara', 'clsk', 'bitf', 'hive', 'btbt', 'hut','riot','iren']
+    'Mining': ['mara', 'clsk', 'bitf', 'hive', 'btbt', 'hut','riot','iren'],
+    'Mag7':['aapl', 'nvda', 'msft', 'meta', 'amzn', 'nflx','avgo']
     };
     // --- END Ticker Groups ---
     
@@ -45,9 +46,68 @@ document.addEventListener('DOMContentLoaded', function () {
     // Ensure you have this element ID in your HTML
     const currentActionElement = document.getElementById('current-action'); 
     const clearButton = document.getElementById('clear-results-button');
+    //const geminiChatButton = document.getElementById('GeminiChat');
     const tickerInput = document.getElementById('tickerInput');
     const selectElement = document.getElementById('ticker-group-select');
     
+document.getElementById('GeminiChat').addEventListener('click', async () => {
+    const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
+
+    await browser.scripting.executeScript({
+        target: { tabId: tab.id },
+        func: async (myText) => {
+            // --- HELPER 1: PASTE & SEND ---
+            async function pasteAndSend(text) {
+                const input = document.querySelector('div[role="textbox"]') || 
+                              document.querySelector('div[contenteditable="true"]');
+                if (!input) return false;
+
+                input.focus();
+                document.execCommand('insertText', false, text);
+                input.dispatchEvent(new Event('input', { bubbles: true }));
+
+                await new Promise(r => setTimeout(r, 500)); // wait for UI state
+                const btn = document.querySelector('button[aria-label="Send message"]');
+                
+                if (btn && !btn.disabled) {
+                    btn.click();
+                } else {
+                    input.dispatchEvent(new KeyboardEvent('keydown', {
+                        key: 'Enter', code: 'Enter', keyCode: 13, bubbles: true
+                    }));
+                }
+                return true;
+            }
+
+            // --- HELPER 2: SCRAPE ---
+            async function scrape() {
+                const selectors = ['.markdown', '.message-content', '.model-response-text'];
+                for (const s of selectors) {
+                    const msgs = document.querySelectorAll(s);
+                    if (msgs.length > 0) return msgs[msgs.length - 1].innerText;
+                }
+                return null;
+            }
+
+            // --- MAIN EXECUTION FLOW ---
+            const success = await pasteAndSend(myText);
+            if (success) {
+                console.log("Waiting 60s for Gemini...");
+                await new Promise(r => setTimeout(r, 60000));
+                const response = await scrape();
+                if (response) {
+                    alert("Scraped: " + response.substring(0, 150) + "...");
+                } else {
+                    alert("Failed to find response after 60s.");
+                }
+            } else {
+                alert("Could not find input box.");
+            }
+        },
+        args: ["Hello from my extension!"]
+    });
+});
+
 
     const manualQueryActions = {
         'queryGemini1': '1.Overview & News',
@@ -219,7 +279,7 @@ document.addEventListener('DOMContentLoaded', function () {
             console.log("Results cleared.");
         }
     }
-    
+
     if (selectElement && tickerInput) {
         selectElement.addEventListener('change', () => {
             const selectedGroupKey = selectElement.value;
@@ -255,7 +315,6 @@ document.addEventListener('DOMContentLoaded', function () {
         clearButton.addEventListener('click', clearResults);
     }
     
-
 
 
 
@@ -372,4 +431,9 @@ toggleButton.addEventListener('click', () => {
         updateStatus(false); // Update UI to Paused/Play text
     }
 });
-
+const captureButton = document.getElementById('capturebutton');
+captureButton.addEventListener('click', () => {
+    const selectElement = document.getElementById('ticker-group-select');
+    const selectedGroupKey = selectElement.value;
+    browser.runtime.sendMessage({ action: "capture", urlKey:  selectedGroupKey});
+});
