@@ -51,61 +51,95 @@ document.addEventListener('DOMContentLoaded', function () {
     const selectElement = document.getElementById('ticker-group-select');
     
 document.getElementById('GeminiChat').addEventListener('click', async () => {
+    const statusElement = document.getElementById('results-display');
+    const selectElement = document.getElementById('ticker-group-select');
+    const selectedGroupKey = selectElement.value;
+    const tickersArray = TICKET_GROUPS[selectedGroupKey];
     const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
 
-    await browser.scripting.executeScript({
-        target: { tabId: tab.id },
-        func: async (myText) => {
-            // --- HELPER 1: PASTE & SEND ---
-            async function pasteAndSend(text) {
-                const input = document.querySelector('div[role="textbox"]') || 
-                              document.querySelector('div[contenteditable="true"]');
-                if (!input) return false;
+    // 1. Initial Status
+    statusElement.textContent = "Starting automation... Please keep this tab open.";
 
-                input.focus();
-                document.execCommand('insertText', false, text);
-                input.dispatchEvent(new Event('input', { bubbles: true }));
+const promptList = tickersArray.map(ticker => `Analyze stock ticker ${ticker} and act as a forensic equity analyst specializing in capital structures for pre-revenue companies. Based on the most recent 10-Q, S-1, S-3, and 424B prospectus filings, identify the following 'hard' price levels:
 
-                await new Promise(r => setTimeout(r, 500)); // wait for UI state
-                const btn = document.querySelector('button[aria-label="Send message"]');
+      The Supply Ceiling: Check the most recent S-3 (Shelf) and 424B5 (ATM Supplement). At what price is the company likely to 'tap' the ATM to raise cash? (Look for recent 'use of proceeds' and 'plan of distribution' sections).
+      The Institutional Floor: Identify the price of the last Registered Direct Offering (RDO). Who were the buyers, and at what price did they enter? (Note if they received warrants as sweeteners).
+      Warrant & Option Redemption Risk: > * Locate the 'Description of Securities' section in the most recent S-1 or 10-K.
+
+      Identify the specific 'Trigger Price' at which the company has the right to force a redemption of public warrants (e.g., is it 150%, 180%, or 200% of the exercise price?).
+      Check the 'Notice Period' (usually 30 days) and the 'Measurement Period' (e.g., 20 trading days within a 30-day window).
+      Calculate the current 'Distance to Trigger'—how close is the current stock price to allowing the company to wipe out the warrant time value?
+      Convertible Overhang: Find the Convertible Note conversion price in the footnotes. If the current price is above this, how many 'fully diluted' shares could hit the market?
+      Insider Lock-ups: Check for recent S-1/A or Form 144 filings. Are there any major lock-up expirations or planned insider sales in the next 30 days?
+      The amount of S3 shelf pending yet
+      Final Output: Suggest a 'Safe Buy' zone based on institutional entry prices and a 'Sell/Take Profit' zone based on where ATM dilution or warrant redemption is likely to occur.`);
+
+    try {
+        // 2. Execute and capture the returned dictionary
+        const injectionResults = await browser.scripting.executeScript({
+            target: { tabId: tab.id },
+            func: async (prompts, tickers) => {
+                const resultsDict = {};
+
+                // --- HELPER: PASTE & SEND ---
+                async function pasteAndSend(text) {
+                    const input = document.querySelector('div[role="textbox"]') || 
+                                  document.querySelector('div[contenteditable="true"]');
+                    if (!input) return false;
+                    input.focus();
+                    document.execCommand('insertText', false, text);
+                    input.dispatchEvent(new Event('input', { bubbles: true }));
+                    await new Promise(r => setTimeout(r, 1000));
+                    const btn = document.querySelector('button[aria-label="Send message"]');
+                    if (btn && !btn.disabled) btn.click();
+                    else input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', code: 'Enter', keyCode: 13, bubbles: true }));
+                    return true;
+                }
+
+                // --- HELPER: SCRAPE ---
+                async function scrape() {
+                    const selectors = ['.markdown', '.message-content', '.model-response-text'];
+                    for (const s of selectors) {
+                        const msgs = document.querySelectorAll(s);
+                        if (msgs.length > 0) return msgs[msgs.length - 1].innerText;
+                    }
+                    return null;
+                }
+
+                // --- LOOP ---
+                for (let i = 0; i < prompts.length; i++) {
+                    const currentPrompt = prompts[i];
+                    const currentTicker = tickers[i]; // Access ticker by index
+                    const success = await pasteAndSend(currentPrompt);
+                    if (success) {
+                        await new Promise(r => setTimeout(r, 60000)); // 60s wait per ticker
+                        const response = await scrape();
+                        resultsDict[currentTicker] = response || "No response found";
+                        
+                        // Random delay between 5-10s
+                        const delay = Math.floor(Math.random() * 5000) + 5000;
+                        await new Promise(r => setTimeout(r, delay));
+                    }
+                }
                 
-                if (btn && !btn.disabled) {
-                    btn.click();
-                } else {
-                    input.dispatchEvent(new KeyboardEvent('keydown', {
-                        key: 'Enter', code: 'Enter', keyCode: 13, bubbles: true
-                    }));
-                }
-                return true;
-            }
+                return resultsDict; // This is what gets sent back to popup.js
+            },
+            args: [promptList,tickersArray]
+        });
 
-            // --- HELPER 2: SCRAPE ---
-            async function scrape() {
-                const selectors = ['.markdown', '.message-content', '.model-response-text'];
-                for (const s of selectors) {
-                    const msgs = document.querySelectorAll(s);
-                    if (msgs.length > 0) return msgs[msgs.length - 1].innerText;
-                }
-                return null;
-            }
+        // 3. Extract result from the injection array
+        const finalDictionary = injectionResults[0].result;
 
-            // --- MAIN EXECUTION FLOW ---
-            const success = await pasteAndSend(myText);
-            if (success) {
-                console.log("Waiting 60s for Gemini...");
-                await new Promise(r => setTimeout(r, 60000));
-                const response = await scrape();
-                if (response) {
-                    alert("Scraped: " + response.substring(0, 150) + "...");
-                } else {
-                    alert("Failed to find response after 60s.");
-                }
-            } else {
-                alert("Could not find input box.");
-            }
-        },
-        args: ["Hello from my extension!"]
-    });
+        // 4. Print to your statusElement
+        // Using JSON.stringify makes it easy to copy-paste later
+        statusElement.textContent = JSON.stringify(finalDictionary, null, 2);
+        
+        // Final alert to notify you when the ~25 minute process is over
+        alert("Success! The dictionary has been generated in the display box.");
+
+    } catch (error) {
+        statusElement.textContent = "Error: " + error.message;
+    }
 });
 
 
